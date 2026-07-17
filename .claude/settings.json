@@ -1,0 +1,17 @@
+{
+  "disableAllHooks": true,
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "You are running as an automatic code-review gate at the end of a Claude Code turn in this Quarkus/Java repo. First run `git diff` and `git diff --staged` and check whether any *.java files under src/ have uncommitted changes. If there are none, output exactly {\"systemMessage\": \"\"} and stop - do nothing else. If there ARE changed *.java files, read .claude/agents/code-reviewer.md for the exact review scope and criteria, then apply it to the diff (read surrounding file context as needed via Read/Grep/Glob). Finally output a single JSON object: {\"systemMessage\": \"<your findings>\"}. Keep the systemMessage concise (bullet list, file:line references, skip stylistic nitpicks) - if the review is clean, use \"Code review: no issues found.\" as the systemMessage. Never set continue to false; this hook must never block the turn from stopping.",
+            "timeout": 180,
+            "statusMessage": "Revue de code automatique en cours..."
+          }
+        ]
+      }
+    ]
+  }
+}
