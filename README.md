@@ -53,6 +53,42 @@ You can then execute your native executable with: `./target/ImageToPaint-1.0-SNA
 
 If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
 
+## Code quality tools
+
+Static analysis and coverage are wired into the Maven build but not bound to `mvnw verify` (so a style
+violation never breaks a normal build). Run them on demand:
+
+> **_NOTE:_** PMD's and SpotBugs's bundled analysis engines lag behind very recent JDKs. `pom.xml` pins
+> `pmd-core`/`pmd-java` to 7.26.0 (overriding the plugin's bundled 7.7.0) and `spotbugs-maven-plugin` to
+> 4.10.3.0 — without these overrides both tools fail outright against Java 25 (`maven.compiler.release=25`)
+> bytecode with `Unsupported class file major version 69`.
+
+```shell script
+./mvnw test                 # also collects JaCoCo coverage data via the surefire/failsafe agent
+./mvnw jacoco:report         # HTML+XML coverage report -> target/site/jacoco/
+./mvnw checkstyle:checkstyle # Google style checks -> target/checkstyle-result.xml
+./mvnw pmd:pmd                # PMD static analysis -> target/pmd.xml
+./mvnw spotbugs:spotbugs     # SpotBugs bytecode analysis -> target/spotbugsXml.xml
+```
+
+### SonarQube
+
+A local SonarQube server (Community Edition, backed by Postgres) can be started with:
+
+```shell script
+docker compose -f docker-compose.sonarqube.yml up -d
+```
+
+It's available at <http://localhost:9000> (default login `admin`/`admin`, changed on first login). Create a
+project token there, then run the analysis — it picks up the Checkstyle/PMD/SpotBugs/JaCoCo reports above
+automatically via the `sonar.java.*.reportPaths` properties in `pom.xml`:
+
+```shell script
+./mvnw verify checkstyle:checkstyle pmd:pmd spotbugs:spotbugs sonar:sonar -Dsonar.token=<your-token>
+```
+
+Never commit a Sonar token — always pass it via `-Dsonar.token` or the `SONAR_TOKEN` env var.
+
 ## Related Guides
 
 - REST ([guide](https://quarkus.io/guides/rest)): Build RESTful web services and APIs using Jakarta REST (formerly JAX-RS)

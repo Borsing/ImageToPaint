@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `org.example:ImageToPaint` is a Quarkus 3.37.3 webapp backbone (Maven, `packaging=quarkus`), generated via the
 official `quarkus-maven-plugin` create goal with the `rest` and `rest-jackson` extensions. Beyond the generated
-scaffold — one sample JAX-RS resource (`GreetingResource`, `GET /hello`) and its tests — no application logic has
-been added yet. There is no prior commit history in this repo.
+scaffold — one sample JAX-RS resource (`GreetingResource`, `GET /hello`) and its tests — there's a layered
+skeleton (`domain` / `repository` / `service` / `resource`) built around an example `Item` object with an
+in-memory repository, meant as a template to copy for real business objects.
 
 ## Build/run commands
 
@@ -22,6 +23,14 @@ Use the Maven wrapper (`mvnw` / `mvnw.cmd`), not a system `mvn`, so the pinned M
 - Über-jar: `./mvnw package -Dquarkus.package.jar.type=uber-jar`
 - Native executable (needs GraalVM, or add `-Dquarkus.native.container-build=true` to build in a container):
   `./mvnw package -Dnative`
+
+## Code quality tools
+
+JaCoCo, Checkstyle (Google style), PMD, SpotBugs, and the Sonar Maven plugin are configured in `pom.xml` but
+none of their `check`-style goals are bound to `mvnw verify` — they don't fail a normal build. Run them
+explicitly (`./mvnw checkstyle:checkstyle`, `pmd:pmd`, `spotbugs:spotbugs`, `jacoco:report`); see README.md for
+the full commands and for starting a local SonarQube server via `docker-compose.sonarqube.yml`. Sonar
+consolidates the other tools' reports through the `sonar.java.*.reportPaths` properties in `pom.xml`.
 
 ## Architecture
 
