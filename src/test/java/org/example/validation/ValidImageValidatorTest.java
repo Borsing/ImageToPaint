@@ -1,5 +1,6 @@
 package org.example.validation;
 
+import jakarta.validation.ConstraintValidatorContext;
 import jakarta.ws.rs.core.MultivaluedMap;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.junit.jupiter.api.Test;
@@ -14,9 +15,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.zip.CRC32;
+import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Plain unit tests for {@link ValidImageValidator} - no Quarkus/REST bootstrap, {@link FileUpload}
@@ -46,13 +52,13 @@ class ValidImageValidatorTest {
         Path file = tempDir.resolve("not-an-image.txt");
         Files.writeString(file, "this is definitely not an image");
 
-        assertFalse(validator.isValid(new FakeFileUpload(file), null));
+        assertRejectedWithMessageContaining(new FakeFileUpload(file), "not a recognized image format");
     }
 
     @Test
     void rejectsFormatOutsideTheAllowList(@TempDir Path tempDir) throws IOException {
         // BMP is decodable by ImageIO but is not in the allow-list (png/jpeg/gif).
-        assertFalse(validator.isValid(imageFile(tempDir, "sample.bmp", "bmp"), null));
+        assertRejectedWithMessageContaining(imageFile(tempDir, "sample.bmp", "bmp"), "format 'bmp' is not allowed");
     }
 
     @Test
@@ -60,12 +66,27 @@ class ValidImageValidatorTest {
         Path file = tempDir.resolve("bomb.png");
         Files.write(file, pngWithDeclaredDimensions(20_000, 20_000));
 
-        assertFalse(validator.isValid(new FakeFileUpload(file), null));
+        assertRejectedWithMessageContaining(new FakeFileUpload(file), "20000x20000");
     }
 
     @Test
     void rejectsNullFile() {
-        assertFalse(validator.isValid(null, null));
+        assertRejectedWithMessageContaining(null, "no file was provided");
+    }
+
+    private void assertRejectedWithMessageContaining(FileUpload file, String expectedMessageFragment) {
+        ConstraintValidatorContext context = mock(ConstraintValidatorContext.class);
+        ConstraintValidatorContext.ConstraintViolationBuilder builder =
+                mock(ConstraintValidatorContext.ConstraintViolationBuilder.class);
+        when(context.buildConstraintViolationWithTemplate(anyString())).thenReturn(builder);
+
+        assertFalse(validator.isValid(file, context));
+
+        verify(context).disableDefaultConstraintViolation();
+        ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
+        verify(context).buildConstraintViolationWithTemplate(messageCaptor.capture());
+        assertTrue(messageCaptor.getValue().contains(expectedMessageFragment),
+                () -> "expected message to contain '" + expectedMessageFragment + "' but was: " + messageCaptor.getValue());
     }
 
     private static FakeFileUpload imageFile(Path dir, String fileName, String formatName) throws IOException {
