@@ -31,10 +31,11 @@ On top of `code-reviewer.md`'s general criteria, check for:
 - Any new endpoint or transform touching raw pixel data needs a pixel-count or dimension guard —
   `ValidImageValidator`'s 40,000,000-pixel cap is the existing precedent against decompression-bomb inputs.
 - RGB/pixel matrix code should read/write with a single `getRGB`/`setRGB` call over the region, not per-pixel
-  calls (see `RGBMatrixService` — a deliberate performance choice already established in the repo).
-- `ApplicationScoped` services (`ImageTransformationService`, `RGBMatrixService`) must stay stateless — Quarkus
-  reuses a single instance across requests.
-- `Item`/`domain.Image` are known leftover scaffold — not a defect to flag unless the change actually touches them.
+  calls (see `adapter.BufferedImageConverter` — a deliberate performance choice already established in the repo).
+- `ApplicationScoped` beans (`application.ImageFilteringFacade`, `adapter.BufferedImageConverter`,
+  `adapter.ImageCodec`) must stay stateless — Quarkus reuses a single instance across requests.
+- Only `adapter` classes may depend on external types/libraries (AWT, ImageIO); flag any such dependency
+  creeping into `domain` or `application`.
 
 ## How to review
 
