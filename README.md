@@ -1,8 +1,57 @@
 # ImageToPaint
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+A Quarkus webapp that uploads an image and returns a transformed version of it: grayscale, or a
+posterized "paint by numbers" effect obtained by clustering colors with k-means in CIELAB space.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## Endpoints
+
+All three endpoints accept a `multipart/form-data` POST with a `file` part (PNG/JPEG/GIF, magic-byte
+sniffed — content-type headers and file extensions are never trusted) and return `image/png`.
+
+| Endpoint            | Extra form fields                          | Effect                                                              |
+|----------------------|--------------------------------------------|----------------------------------------------------------------------|
+| `POST /images/grayscale` | —                                        | Rec. 709 luma grayscale                                              |
+| `POST /images/paint`     | `numberOfColors` (`@Min(1)`, default `6`)  | Reduces the image to `numberOfColors` colors via k-means in CIELAB space |
+| `POST /images/values`    | `numberOfValues` (`@Min(1)`, default `6`)  | Grayscale, then quantized to `numberOfValues` shades the same way    |
+
+```shell script
+curl -F "file=@photo.png" http://localhost:8080/images/grayscale -o grayscale.png
+curl -F "file=@photo.png" -F "numberOfColors=8" http://localhost:8080/images/paint -o paint.png
+curl -F "file=@photo.png" -F "numberOfValues=4" http://localhost:8080/images/values -o values.png
+```
+
+Uploads are also rejected (before any decoding) if they exceed 40,000,000 declared pixels (a
+decompression-bomb guard) or the 10 MB request body cap — see [Configuration](#configuration).
+
+## Architecture
+
+The codebase (`dev.borsing.imagetopaint`) is layered so the image-processing logic never depends on
+HTTP or on `java.awt`/`javax.imageio`:
+
+- **`domain`** — pure business logic, no external dependencies: `Image`/`domain.color.Rgb` (an
+  immutable pixel matrix), `domain.color.Cielab`/`RgbCielabConverter` (color-space conversion), and
+  `domain.filter` (the `ImageFilter` strategy interface plus `GrayScaleFilter`, `PaintingFilter`,
+  `ValueScaleFilter`).
+- **`adapter`** — the only layer allowed to touch external libraries: `ImageCodec` wraps
+  `javax.imageio` (decode/encode/format-sniffing), `BufferedImageConverter` converts between AWT's
+  `BufferedImage` and the domain `Image`.
+- **`usecase`** — `ImageFilteringFacade` orchestrates one use case per method (`filterToGrayScale`,
+  `filterToPaint`, `filterToValues`), wiring the adapter and a domain filter together. It only ever
+  sees `BufferedImage` in/out, so the HTTP layer stays unaware the domain model exists.
+- **`resource`** — `ImageResource`, a thin JAX-RS controller: decode via `ImageCodec`, delegate to
+  `ImageFilteringFacade`, re-encode via `ImageCodec`.
+- **`validation`** — `@ValidImage`/`ValidImageValidator`, a custom Bean Validation constraint applied
+  to the upload; sniffs the real format via `ImageCodec` rather than trusting client-supplied metadata.
+
+## Configuration
+
+Set in `src/main/resources/application.properties`:
+
+| Property | Default | Purpose |
+|---|---|---|
+| `quarkus.http.limits.max-body-size` | `10M` | Caps the whole multipart request body |
+| `imagetopaint.image.allowed-formats` | `png,jpeg,gif` | Formats accepted by `@ValidImage` after magic-byte sniffing |
+| `imagetopaint.image.max-pixels` | `40000000` | Decompression-bomb guard: max declared pixel count |
 
 ## Running the application in dev mode
 
@@ -88,16 +137,3 @@ automatically via the `sonar.java.*.reportPaths` properties in `pom.xml`:
 ```
 
 Never commit a Sonar token — always pass it via `-Dsonar.token` or the `SONAR_TOKEN` env var.
-
-## Related Guides
-
-- REST ([guide](https://quarkus.io/guides/rest)): Build RESTful web services and APIs using Jakarta REST (formerly JAX-RS)
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
