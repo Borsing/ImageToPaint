@@ -32,10 +32,10 @@ On top of `code-reviewer.md`'s general criteria, check for:
   `ValidImageValidator`'s 40,000,000-pixel cap is the existing precedent against decompression-bomb inputs.
 - RGB/pixel matrix code should read/write with a single `getRGB`/`setRGB` call over the region, not per-pixel
   calls (see `adapter.BufferedImageConverter` — a deliberate performance choice already established in the repo).
-- `ApplicationScoped` beans (`application.ImageFilteringFacade`, `adapter.BufferedImageConverter`,
+- `ApplicationScoped` beans (`usecase.ImageFilteringFacade`, `adapter.BufferedImageConverter`,
   `adapter.ImageCodec`) must stay stateless — Quarkus reuses a single instance across requests.
 - Only `adapter` classes may depend on external types/libraries (AWT, ImageIO); flag any such dependency
-  creeping into `domain` or `application`.
+  creeping into `domain` or `usecase`.
 
 ## How to review
 

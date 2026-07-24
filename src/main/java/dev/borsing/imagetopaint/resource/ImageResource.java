@@ -9,7 +9,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.core.Response;
 import dev.borsing.imagetopaint.adapter.ImageCodec;
-import dev.borsing.imagetopaint.application.ImageFilteringFacade;
+import dev.borsing.imagetopaint.usecase.ImageFilteringFacade;
 import dev.borsing.imagetopaint.domain.filter.PaintingFilterParams;
 import dev.borsing.imagetopaint.validation.ValidImage;
 import jakarta.validation.constraints.Min;

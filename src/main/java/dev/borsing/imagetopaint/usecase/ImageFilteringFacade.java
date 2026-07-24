@@ -1,4 +1,4 @@
-package dev.borsing.imagetopaint.application;
+package dev.borsing.imagetopaint.usecase;
 
 import dev.borsing.imagetopaint.domain.filter.PaintingFilter;
 import dev.borsing.imagetopaint.domain.filter.PaintingFilterParams;

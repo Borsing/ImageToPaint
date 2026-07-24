@@ -9,10 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 (`GreetingResource`, the `Item` CRUD layering) has been removed — the codebase is now just the **image upload and
 transformation** feature.
 
-`POST /images` (`ImageResource`) accepts a multipart file upload (`@RestForm FileUpload`), validates it with the
-custom `@ValidImage` Bean Validation constraint, converts it to grayscale via a pluggable `ImageFilter` strategy,
-and returns the result as `image/png`. The image pipeline is built around real domain types (`Image`, `RGB`,
-`ImageFilter`), a codec/converter `adapter` layer, and an `application` facade — see "Image pipeline" below.
+`ImageResource` exposes two multipart endpoints, `POST /images/grayscale` and `POST /images/paint`, both
+validated with the custom `@ValidImage` Bean Validation constraint and returning `image/png`. The image pipeline
+is built around real domain types (`Image`, `RGB`, `ImageFilter`), a codec/converter `adapter` layer, and a
+`usecase` facade — see "Image pipeline" below.
 
 ## Build/run commands
 
@@ -57,9 +57,12 @@ consolidates the other tools' reports through the `sonar.java.*.reportPaths` pro
 
 ### Image pipeline
 
-- `ImageResource` (`POST /images`, multipart in, `image/png` out) is a thin controller: it decodes the upload via
-  `adapter.ImageCodec`, delegates to `application.ImageFilteringFacade`, and re-encodes the result via
-  `ImageCodec` — it has no direct dependency on `javax.imageio` or the domain model.
+- `ImageResource` is a thin controller: both endpoints decode the upload via `adapter.ImageCodec`, delegate to
+  `usecase.ImageFilteringFacade`, and re-encode the result via `ImageCodec` — it has no direct dependency on
+  `javax.imageio` or the domain model.
+  - `POST /images/grayscale` takes just the file.
+  - `POST /images/paint` also takes a `numberOfColors` form field (`@Min(1)`, `@DefaultValue("6")`), wrapped into
+    a `domain.filter.PaintingFilterParams` before being passed to the facade.
 - `ValidImage`/`ValidImageValidator` (in `validation`) is a custom Bean Validation constraint applied to the
   `FileUpload` parameter, constructor-injected with `ImageCodec` and with the allow-list/pixel-limit read from
   `application.properties` (`imagetopaint.image.allowed-formats`, `imagetopaint.image.max-pixels`) via
@@ -73,14 +76,15 @@ consolidates the other tools' reports through the `sonar.java.*.reportPaths` pro
   `BufferedImageConverter` converts to/from `Image`/`RGB[][]` (alpha dropped), using a single `getRGB`/`setRGB`
   call over the whole image rather than per-pixel calls.
 - `domain.filter.ImageFilter` is a strategy interface (`Image filter(Image image)`) for pure, non-mutating image
-  transformations. `domain.filter.GrayScaleFilter` applies Rec. 709 luma (`0.2126R + 0.7152G + 0.0722B`) and is
-  the only one currently wired up; `domain.filter.PaintingFilter` is an unimplemented passthrough placeholder for
-  the eventual "paint" pipeline the project is named for. Filters are plain domain records rather than CDI beans,
-  since future filters are expected to carry their own parameters as record components.
-- `application.ImageFilteringFacade.filterToGrayScale` is the use-case-level facade `ImageResource` talks to: it
-  wires `BufferedImageConverter` and `GrayScaleFilter` together, so the HTTP layer only ever sees `BufferedImage`
-  in/out and stays unaware the domain model exists. It currently hardcodes which filter runs instead of
-  accepting one as a parameter — a known rough edge to revisit once `PaintingFilter` is implemented.
+  transformations. `domain.filter.GrayScaleFilter` applies Rec. 709 luma (`0.2126R + 0.7152G + 0.0722B`) — see its
+  Javadoc for why those specific weights. `domain.filter.PaintingFilter(PaintingFilterParams params)` is still an
+  unimplemented passthrough; its params record currently carries just `numberOfColors`, validated at the HTTP
+  boundary (`@Min(1)`) rather than in the domain. Filters are plain domain records rather than CDI beans, since
+  each carries its own parameters as record components instead of being configured externally.
+- `usecase.ImageFilteringFacade` has one method per use case — `filterToGrayScale(BufferedImage)` and
+  `filterToPaint(BufferedImage, PaintingFilterParams)` — each wiring `BufferedImageConverter` and the relevant
+  filter together, so the HTTP layer only ever sees `BufferedImage` in/out and stays unaware the domain model
+  exists.
 
 ## Java version
 
