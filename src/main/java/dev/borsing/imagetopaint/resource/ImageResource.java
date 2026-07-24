@@ -43,10 +43,14 @@ public class ImageResource {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces("image/png")
     public Response paint(@RestForm @ValidImage FileUpload file,
-                          @RestForm @DefaultValue("6") @Min(1) int numberOfColors) {
+                          @RestForm @DefaultValue("6") @Min(1) int numberOfColors,
+                          @RestForm @DefaultValue("42") @Min(1) long seed,
+                          @RestForm @DefaultValue("100") @Min(1) int maxIterations) {
+
         BufferedImage bitmap = imageCodec.decode(file.uploadedFile().toFile());
-        BufferedImage result = imageFilteringFacade.filterToPaint(bitmap, new PaintingFilterParams(numberOfColors));
+        BufferedImage result = imageFilteringFacade.filterToPaint(bitmap, new PaintingFilterParams(numberOfColors, seed, maxIterations));
         byte[] output = imageCodec.encode(result, "png");
+
         return Response.ok(output).build();
     }
 }
