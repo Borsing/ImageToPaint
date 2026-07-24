@@ -1,5 +1,6 @@
 package dev.borsing.imagetopaint.validation;
 
+import dev.borsing.imagetopaint.adapter.ImageCodec;
 import jakarta.validation.ConstraintValidatorContext;
 import jakarta.ws.rs.core.MultivaluedMap;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
@@ -14,6 +15,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.zip.CRC32;
 import org.mockito.ArgumentCaptor;
 
@@ -30,7 +32,8 @@ import static org.mockito.Mockito.when;
  */
 class ValidImageValidatorTest {
 
-    private final ValidImageValidator validator = new ValidImageValidator();
+    private final ValidImageValidator validator =
+            new ValidImageValidator(new ImageCodec(), List.of("png", "jpeg", "gif"), 40_000_000L);
 
     @Test
     void acceptsPng(@TempDir Path tempDir) throws IOException {

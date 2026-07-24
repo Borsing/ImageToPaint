@@ -59,24 +59,29 @@ consolidates the other tools' reports through the `sonar.java.*.reportPaths` pro
 ### Image pipeline
 
 - `ImageResource` (`POST /images`, multipart in, `image/png` out) reads the uploaded file with `ImageIO.read`,
-  delegates to `ImageFilteringService`, and writes the result back with `ImageIO.write`.
+  delegates to `application.ImageFilteringFacade`, and writes the result back with `ImageIO.write`.
 - `ValidImage`/`ValidImageValidator` (in `validation`) is a custom Bean Validation constraint applied to the
   `FileUpload` parameter. It never trusts the client-supplied `Content-Type` or filename extension — it sniffs
   the real format from magic bytes via `ImageIO.getImageReaders`, only accepts `png`/`jpeg`/`gif`, and rejects
   images over 40,000,000 pixels as a decompression-bomb guard (tiny file, huge decoded bitmap).
 - `domain.Image` is an immutable record wrapping a `[height][width]` matrix of `domain.RGB` pixels; `RGB` is a
   small value record (`red`/`green`/`blue`, each validated to 0-255) — pixel access is by named component, not by
-  array index.
-- `service.ImageMapperService` converts a `BufferedImage` to/from `Image`/`RGB[][]` (alpha dropped), using a
-  single `getRGB`/`setRGB` call over the whole image rather than per-pixel calls.
+  array index. The `domain` package (including `domain.filter`) has no dependency on AWT/Quarkus — it's pure.
+- `adapter.BufferedImageConverter` is the boundary between AWT's `BufferedImage` and the domain model: it
+  converts to/from `Image`/`RGB[][]` (alpha dropped), using a single `getRGB`/`setRGB` call over the whole image
+  rather than per-pixel calls. Any class named after an external type/library (AWT, ImageIO...) belongs in
+  `adapter`, never in `domain`.
 - `domain.filter.ImageFilter` is a strategy interface (`Image filter(Image image)`) for pure, non-mutating image
   transformations. `domain.filter.BlackAndWhiteFilter` is the current implementation, applying Rec. 709 luma
   (`0.2126R + 0.7152G + 0.0722B`) to produce grayscale. Filters are plain domain records rather than CDI beans,
   since future filters (sepia, thresholding, etc.) are expected to carry their own parameters as record
   components.
-- `service.ImageFilteringService.filterToBlackAndWhite` wires `ImageMapperService` and `BlackAndWhiteFilter`
-  together; it currently hardcodes which filter runs instead of accepting one as a parameter — a known rough
-  edge to revisit once a second filter exists.
+- `application.ImageFilteringFacade.filterToBlackAndWhite` is the use-case-level facade `ImageResource` talks
+  to: it wires `BufferedImageConverter` and `BlackAndWhiteFilter` together, so the HTTP layer only ever sees
+  `BufferedImage` in/out and stays unaware the domain model exists. It currently hardcodes which filter runs
+  instead of accepting one as a parameter — a known rough edge to revisit once a second filter exists.
+- `service.ItemService`/`repository.*Item*`/`domain.Item` are the unrelated `Item` CRUD scaffold — leftover
+  template artifacts, not wired into the image pipeline.
 
 ## Java version
 

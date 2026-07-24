@@ -1,4 +1,4 @@
-package dev.borsing.imagetopaint.service;
+package dev.borsing.imagetopaint.adapter;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import dev.borsing.imagetopaint.domain.Image;
@@ -7,7 +7,7 @@ import dev.borsing.imagetopaint.domain.RGB;
 import java.awt.image.BufferedImage;
 
 @ApplicationScoped
-public class ImageMapperService {
+public class BufferedImageConverter {
 
     /**
      * Converts an image to a [height][width] matrix of {@link RGB} pixels (alpha dropped).

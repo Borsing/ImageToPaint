@@ -8,5 +8,5 @@ import dev.borsing.imagetopaint.domain.Image;
  */
 public interface ImageFilter {
 
-    Image filter(Image image);
+    Image filter(Image imageSource);
 }

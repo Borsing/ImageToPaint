@@ -3,11 +3,11 @@ package dev.borsing.imagetopaint.domain.filter;
 import dev.borsing.imagetopaint.domain.Image;
 import dev.borsing.imagetopaint.domain.RGB;
 
-public record BlackAndWhiteFilter() implements ImageFilter {
+public record GrayScaleFilter() implements ImageFilter {
 
     @Override
-    public Image filter(Image image) {
-        RGB[][] source = image.pixels();
+    public Image filter(Image imageSource) {
+        RGB[][] source = imageSource.pixels();
         RGB[][] result = new RGB[source.length][];
 
         for (int y = 0; y < source.length; y++) {
