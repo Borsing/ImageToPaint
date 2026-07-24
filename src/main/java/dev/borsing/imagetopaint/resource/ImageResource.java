@@ -2,6 +2,7 @@ package dev.borsing.imagetopaint.resource;
 
 import dev.borsing.imagetopaint.domain.filter.ValueScaleFilterParams;
 import jakarta.inject.Inject;
+import jakarta.validation.constraints.Max;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -44,7 +45,7 @@ public class ImageResource {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces("image/png")
     public Response paint(@RestForm @ValidImage FileUpload file,
-                          @RestForm @DefaultValue("6") @Min(1) int numberOfColors) {
+                          @RestForm @DefaultValue("6") @Min(1) @Max(1000) int numberOfColors) {
 
         BufferedImage bitmap = imageCodec.decode(file.uploadedFile().toFile());
         BufferedImage result = imageFilteringFacade.filterToPaint(bitmap, new PaintingFilterParams(numberOfColors));
@@ -58,7 +59,7 @@ public class ImageResource {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces("image/png")
     public Response values(@RestForm @ValidImage FileUpload file,
-                          @RestForm @DefaultValue("6") @Min(1) int numberOfValues) {
+                          @RestForm @DefaultValue("6") @Min(1) @Max(256) int numberOfValues) {
 
         BufferedImage bitmap = imageCodec.decode(file.uploadedFile().toFile());
         BufferedImage result = imageFilteringFacade.filterToValues(bitmap, new ValueScaleFilterParams(numberOfValues));
