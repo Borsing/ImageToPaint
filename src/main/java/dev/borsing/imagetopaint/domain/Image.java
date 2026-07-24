@@ -1,9 +1,11 @@
 package dev.borsing.imagetopaint.domain;
 
+import dev.borsing.imagetopaint.domain.color.Rgb;
+
 /**
- * A [height][width] matrix of {@link RGB} pixels.
+ * A [height][width] matrix of {@link Rgb} pixels.
  */
-public record Image(RGB[][] pixels) {
+public record Image(Rgb[][] pixels) {
 
     public int height() {
         return pixels.length;

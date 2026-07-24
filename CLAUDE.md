@@ -11,8 +11,8 @@ transformation** feature.
 
 `ImageResource` exposes two multipart endpoints, `POST /images/grayscale` and `POST /images/paint`, both
 validated with the custom `@ValidImage` Bean Validation constraint and returning `image/png`. The image pipeline
-is built around real domain types (`Image`, `RGB`, `ImageFilter`), a codec/converter `adapter` layer, and a
-`usecase` facade — see "Image pipeline" below.
+is built around real domain types (`Image`, `domain.color.Rgb`, `ImageFilter`), a codec/converter `adapter`
+layer, and a `usecase` facade — see "Image pipeline" below.
 
 ## Build/run commands
 
@@ -68,12 +68,19 @@ consolidates the other tools' reports through the `sonar.java.*.reportPaths` pro
   `application.properties` (`imagetopaint.image.allowed-formats`, `imagetopaint.image.max-pixels`) via
   `@ConfigProperty`. It never trusts the client-supplied `Content-Type` or filename extension — `ImageCodec.sniff`
   reads the real format from magic bytes without fully decoding the image.
-- `domain.Image` is an immutable record wrapping a `[height][width]` matrix of `domain.RGB` pixels; `RGB` is a
-  small value record (`red`/`green`/`blue`, each validated to 0-255) — pixel access is by named component, not by
-  array index. The `domain` package (including `domain.filter`) has no dependency on AWT/Quarkus — it's pure.
+- `domain.Image` is an immutable record wrapping a `[height][width]` matrix of `domain.color.Rgb` pixels; `Rgb`
+  is a small value record (`red`/`green`/`blue`, each validated to 0-255) — pixel access is by named component,
+  not by array index. The `domain` package (including `domain.filter`, `domain.color`) has no dependency on
+  AWT/Quarkus — it's pure.
+- `domain.color` groups color-space types and conversions: `Rgb`, `Cielab` (`lightness`/`a`/`b`), and
+  `RgbCielabConverter`, which converts both ways — `toCielabMatrix(Image)` (linear sRGB → XYZ → CIELAB) and
+  `fromCielabMatrix(Cielab[][])` (the inverse, channels clamped to [0, 255] since out-of-gamut Lab values can
+  round slightly outside range). Pure math, no external dependency; kept separate from `Image`/`domain.filter`
+  since this cluster is expected to grow (color distance, quantization) as the painting transformation gets
+  implemented.
 - `adapter` is the only package allowed to depend on external types/libraries (AWT, ImageIO). `ImageCodec` wraps
   `ImageIO.read`/`write`/`getImageReaders` (decode, encode, and the format/dimension sniffing above).
-  `BufferedImageConverter` converts to/from `Image`/`RGB[][]` (alpha dropped), using a single `getRGB`/`setRGB`
+  `BufferedImageConverter` converts to/from `Image`/`Rgb[][]` (alpha dropped), using a single `getRGB`/`setRGB`
   call over the whole image rather than per-pixel calls.
 - `domain.filter.ImageFilter` is a strategy interface (`Image filter(Image image)`) for pure, non-mutating image
   transformations. `domain.filter.GrayScaleFilter` applies Rec. 709 luma (`0.2126R + 0.7152G + 0.0722B`) — see its
